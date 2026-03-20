@@ -6,19 +6,19 @@ export const ControlPanel: React.FC = () => {
   const { isRunning, isPaused, isConnected, sendCommand, selectedNode } = useSimulation();
 
   const baseButton =
-    'px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 border border-slate-600 disabled:opacity-50 disabled:cursor-not-allowed';
+    'px-4 py-2 rounded font-medium text-sm transition-all duration-200 border disabled:opacity-50 disabled:cursor-not-allowed';
 
-  const primaryButton = `${baseButton} bg-slate-700 text-slate-100 hover:bg-slate-600 hover:border-slate-500`;
-  const successButton = `${baseButton} bg-emerald-700 text-emerald-50 hover:bg-emerald-600 hover:border-emerald-600`;
-  const warningButton = `${baseButton} bg-amber-700 text-amber-50 hover:bg-amber-600 hover:border-amber-600`;
-  const dangerButton = `${baseButton} bg-red-700 text-red-50 hover:bg-red-600 hover:border-red-600`;
-  const accentButton = `${baseButton} bg-cyan-700 text-cyan-50 hover:bg-cyan-600 hover:border-cyan-600`;
+  const primaryButton = `${baseButton} bg-gray-200 text-gray-900 border-gray-300 hover:bg-gray-300 hover:border-gray-400`;
+  const successButton = `${baseButton} bg-green-700 text-white border-green-800 hover:bg-green-600 hover:border-green-700`;
+  const warningButton = `${baseButton} bg-orange-600 text-white border-orange-700 hover:bg-orange-500 hover:border-orange-600`;
+  const dangerButton = `${baseButton} bg-red-600 text-white border-red-700 hover:bg-red-500 hover:border-red-600`;
+  const accentButton = `${baseButton} bg-blue-600 text-white border-blue-700 hover:bg-blue-500 hover:border-blue-600`;
 
   return (
     <div className="w-full flex items-center justify-start gap-8 flex-wrap">
       {/* Simulation Controls */}
       <div className="flex items-center gap-3">
-        <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+        <span className="text-xs text-gray-600 font-semibold uppercase tracking-wider">
           Simulation
         </span>
         <motion.button
@@ -57,7 +57,7 @@ export const ControlPanel: React.FC = () => {
 
       {/* Cluster Operations */}
       <div className="flex items-center gap-3">
-        <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+        <span className="text-xs text-gray-600 font-semibold uppercase tracking-wider">
           Cluster
         </span>
         <motion.button
@@ -85,7 +85,7 @@ export const ControlPanel: React.FC = () => {
 
       {/* Failure Injection */}
       <div className="flex items-center gap-3">
-        <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+        <span className="text-xs text-gray-600 font-semibold uppercase tracking-wider">
           Inject Fault
         </span>
         <motion.button

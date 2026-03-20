@@ -23,6 +23,8 @@ let clients: Set<WebSocket> = new Set();
 let broadcastInterval: NodeJS.Timeout | null = null;
 let electionInProgress = false;
 let lastSentLogIndex = -1; // Track which log was last sent
+let lastElectionTime = 0; // Track when last election occurred
+const ELECTION_COOLDOWN = 5000; // 5 seconds minimum between elections
 
 // Initialize cluster with some nodes
 function initializeCluster(): void {
@@ -146,9 +148,11 @@ function startBroadcastLoop(): void {
       clusterManager.updateNodes();
 
       // Check for leader failure and trigger election if needed
-      if (!electionInProgress) {
+      const now = Date.now();
+      if (!electionInProgress && (now - lastElectionTime) > ELECTION_COOLDOWN) {
         if (electionService.shouldTriggerElection()) {
           electionInProgress = true;
+          lastElectionTime = now;
           addLog('[ELECTION] Initiating leader election...');
 
           // Simulate election process
@@ -284,6 +288,7 @@ function handleCommand(data: any, ws: WebSocket): void {
       isPaused = false;
       electionInProgress = false;
       lastSentLogIndex = -1;
+      lastElectionTime = 0;
       heartbeatService.stopLoop();
       stopBroadcastLoop();
       clusterManager.clear();
@@ -309,12 +314,47 @@ function handleCommand(data: any, ws: WebSocket): void {
 
     case 'removeNode':
       if (isRunning && nodeId) {
+        const removedNode = clusterManager.getNode(nodeId);
+        const wasLeader = nodeId === clusterManager.getLeader();
+        
         clusterManager.removeNode(nodeId);
         addLog(`[NODE] Removed node: ${nodeId}`);
 
-        if (!clusterManager.getLeader()) {
-          electionService.selectLeader();
-          addLog(`[ELECTION] New leader elected: ${clusterManager.getLeader()}`);
+        if (wasLeader) {
+          addLog(`[ELECTION] Leader removed, triggering election...`);
+          if (!electionInProgress) {
+            electionInProgress = true;
+            lastElectionTime = Date.now();
+            
+            setTimeout(() => {
+              const newLeaderId = electionService.selectLeader();
+              addLog(`[ELECTION] New leader elected: ${newLeaderId}`);
+              broadcastAnimationEvent({
+                type: 'COORDINATOR',
+                nodeId: newLeaderId || '',
+                timestamp: Date.now(),
+              });
+              electionInProgress = false;
+              broadcastUpdate();
+            }, 1000);
+          }
+        } else if (!clusterManager.getLeader()) {
+          if (!electionInProgress) {
+            electionInProgress = true;
+            lastElectionTime = Date.now();
+            
+            setTimeout(() => {
+              const newLeaderId = electionService.selectLeader();
+              addLog(`[ELECTION] New leader elected: ${newLeaderId}`);
+              broadcastAnimationEvent({
+                type: 'COORDINATOR',
+                nodeId: newLeaderId || '',
+                timestamp: Date.now(),
+              });
+              electionInProgress = false;
+              broadcastUpdate();
+            }, 1000);
+          }
         }
 
         broadcastUpdate();

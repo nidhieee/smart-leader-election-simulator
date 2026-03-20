@@ -79,21 +79,21 @@ export const NetworkCanvasEnhanced: React.FC = () => {
 
   const getNodeColor = (nodeId: string, isLeader: boolean) => {
     const node = nodes.find((n) => n.id === nodeId);
-    if (!node) return '#64748b';
+    if (!node) return '#9ca3af';
 
     if (isLeader) {
-      return '#06b6d4'; // Cyan for leader
+      return '#60a5fa'; // Bright blue for leader
     }
 
     switch (node.status) {
       case NodeStatus.HEALTHY:
-        return '#10b981'; // Green
+        return '#4ade80'; // Bright green
       case NodeStatus.DEGRADED:
-        return '#f59e0b'; // Amber
+        return '#fbbf24'; // Bright amber
       case NodeStatus.FAILED:
-        return '#ef4444'; // Red
+        return '#f87171'; // Bright red
       default:
-        return '#64748b'; // Gray
+        return '#9ca3af'; // Gray
     }
   };
 
@@ -124,7 +124,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
                 y1={pos.y}
                 x2={leaderPos.x}
                 y2={leaderPos.y}
-                stroke="#64748b"
+                stroke="#d1d5db"
                 strokeWidth="1.5"
                 strokeDasharray={`${dashLength},${dashGap}`}
                 opacity="0.3"
@@ -146,7 +146,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
               y1={pos.y}
               x2={nextPos.x}
               y2={nextPos.y}
-              stroke="#475569"
+              stroke="#d1d5db"
               strokeWidth="1"
               opacity="0.15"
             />
@@ -157,6 +157,8 @@ export const NetworkCanvasEnhanced: React.FC = () => {
   };
 
   const renderAnimationEvents = () => {
+    const heartbeatEvents = animationEvents.filter((e) => e.type === 'HEARTBEAT');
+    
     return animationEvents.map((event, idx) => {
       const nodePos = nodePositions.find((p) => p.id === event.nodeId);
       if (!nodePos) return null;
@@ -172,7 +174,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
                 cy={nodePos.y}
                 r="0"
                 fill="none"
-                stroke="#10b981"
+                stroke="#4ade80"
                 strokeWidth="2"
                 animate={{
                   r: [0, 50],
@@ -191,7 +193,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
               cx={nodePos.x}
               cy={nodePos.y}
               r="4"
-              fill="#10b981"
+              fill="#4ade80"
               animate={{
                 r: [4, 8, 4],
                 opacity: [1, 0.5, 1],
@@ -210,7 +212,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
           <motion.g key={`coordinator-${idx}-${event.timestamp}`}>
             <motion.path
               d={`M ${nodePos.x - 20} ${nodePos.y} L ${nodePos.x + 20} ${nodePos.y} M ${nodePos.x} ${nodePos.y - 20} L ${nodePos.x} ${nodePos.y + 20}`}
-              stroke="#06b6d4"
+              stroke="#2563eb"
               strokeWidth="2"
               fill="none"
               strokeLinecap="round"
@@ -225,6 +227,45 @@ export const NetworkCanvasEnhanced: React.FC = () => {
       }
 
       return null;
+    });
+  };
+
+  const renderHeartbeatPaths = () => {
+    // Show heartbeat signals as red dots traveling from leader to follower nodes
+    if (!leader || animationEvents.length === 0) return null;
+
+    const hasHeartbeat = animationEvents.some((e) => e.type === 'HEARTBEAT');
+    if (!hasHeartbeat) return null;
+
+    const leaderPos = nodePositions.find((p) => p.id === leader);
+    if (!leaderPos) return null;
+
+    return nodePositions.map((followerPos) => {
+      if (followerPos.id === leader) return null;
+
+      return (
+        <g key={`heartbeat-path-${followerPos.id}`}>
+          {/* Animated red dot moving from leader to follower */}
+          <motion.circle
+            cx={leaderPos.x}
+            cy={leaderPos.y}
+            r="3"
+            fill="#ef4444"
+            opacity="0.8"
+            animate={{
+              cx: [leaderPos.x, followerPos.x],
+              cy: [leaderPos.y, followerPos.y],
+              opacity: [1, 0],
+            }}
+            transition={{
+              duration: 0.8,
+              ease: 'easeInOut',
+              repeat: Infinity,
+              repeatDelay: 0.2,
+            }}
+          />
+        </g>
+      );
     });
   };
 
@@ -253,7 +294,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
               cy={pos.y}
               r="45"
               fill="none"
-              stroke="#06b6d4"
+              stroke="#2563eb"
               strokeWidth="1"
               opacity="0.2"
               animate={{
@@ -273,7 +314,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
             cx={pos.x}
             cy={pos.y}
             r="28"
-            fill="rgba(15, 23, 42, 0.9)"
+            fill="rgba(30, 41, 59, 0.9)"
             stroke={color}
             strokeWidth={isLeader ? '3' : isSelected ? '2.5' : '2'}
             filter={isLeader ? 'url(#nodeShadow)' : undefined}
@@ -297,7 +338,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
             y={pos.y + 6}
             textAnchor="middle"
             className="text-xs font-bold select-none pointer-events-none"
-            fill={color}
+            fill="#f3f4f6"
             fontSize="11"
           >
             N{pos.id.split('-')[1]}
@@ -324,7 +365,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
                 cx={pos.x}
                 cy={pos.y - 42}
                 r="10"
-                fill="#06b6d4"
+                fill="#60a5fa"
                 opacity="0.3"
               />
               <text
@@ -333,7 +374,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
                 textAnchor="middle"
                 dy="0.3em"
                 className="text-xs font-bold select-none pointer-events-none"
-                fill="#06b6d4"
+                fill="#60a5fa"
                 fontSize="12"
               >
                 ★
@@ -363,7 +404,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
     <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 relative p-0">
       {/* Background pattern */}
       <svg
-        className="absolute inset-0 w-full h-full opacity-5 pointer-events-none"
+        className="absolute inset-0 w-full h-full opacity-10 pointer-events-none"
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
       >
@@ -398,7 +439,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
               dy="0"
               stdDeviation="4"
               floodOpacity="0.6"
-              floodColor="#06b6d4"
+              floodColor="#60a5fa"
             />
           </filter>
           <linearGradient id="backgroundGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -416,6 +457,9 @@ export const NetworkCanvasEnhanced: React.FC = () => {
 
         {/* Network edges */}
         {renderNetworkEdges()}
+
+        {/* Heartbeat path signals */}
+        {renderHeartbeatPaths()}
 
         {/* Animation events layer */}
         <AnimatePresence>{renderAnimationEvents()}</AnimatePresence>

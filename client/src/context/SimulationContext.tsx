@@ -23,6 +23,7 @@ interface SimulationContextType {
   isConnected: boolean;
   animationEvents: AnimationEvent[];
   clearAnimationEvent: (index: number) => void;
+  electionInProgress: boolean;
 }
 
 const SimulationContext = createContext<SimulationContextType | undefined>(
@@ -52,6 +53,7 @@ export const SimulationProvider: React.FC<SimulationProviderProps> = ({
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [animationEvents, setAnimationEvents] = useState<AnimationEvent[]>([]);
+  const [electionInProgress, setElectionInProgress] = useState(false);
   
   // Use ref to hold WebSocket instance and prevent recreation
   const wsRef = useRef<WebSocket | null>(null);
@@ -88,6 +90,7 @@ export const SimulationProvider: React.FC<SimulationProviderProps> = ({
   const updateCluster = useCallback((update: ClusterUpdate) => {
     setNodes(update.nodes);
     setLeader(update.leader);
+    setElectionInProgress(update.election);
 
     if (update.log && shouldAddLog(update.log)) {
       setLogs((prev) => [...prev.slice(-99), update.log]);
@@ -226,6 +229,7 @@ export const SimulationProvider: React.FC<SimulationProviderProps> = ({
     isConnected,
     animationEvents,
     clearAnimationEvent,
+    electionInProgress,
   };
 
   return (

@@ -6,21 +6,21 @@ import { LogPanel } from './components/LogPanel';
 import { NodeDetails } from './components/NodeDetails';
 
 function App() {
-  const { isConnected, logs } = useSimulation();
+  const { isConnected, electionInProgress } = useSimulation();
 
   return (
-    <div className="h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white flex flex-col overflow-hidden">
-      {/* Header */}
+    <div className="h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900 flex flex-col overflow-hidden">
+      {/* Header - Dark theme */}
       <motion.header
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="border-b border-slate-700/50 bg-gradient-to-b from-slate-900/80 to-slate-900/40 backdrop-blur-md"
+        className="border-b border-gray-300 bg-gradient-to-r from-slate-800 to-slate-900 text-white"
       >
         <div className="px-8 py-5">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-4xl font-bold bg-clip-text uppercase text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight">
+              <h1 className="text-3xl font-bold text-white tracking-tight">
                 Smart Leader Election Simulator
               </h1>
             </div>
@@ -28,14 +28,14 @@ function App() {
               animate={{
                 opacity: isConnected ? 1 : 0.6,
               }}
-              className="flex items-center gap-2.5 px-5 py-2.5 bg-slate-800/50 border border-slate-700/60 rounded-lg backdrop-blur-sm"
+              className="flex items-center gap-2.5 px-4 py-2 bg-slate-700 border border-slate-600 rounded"
             >
               <div
                 className={`w-2 h-2 rounded-full transition-colors ${
-                  isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'
+                  isConnected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'
                 }`}
               ></div>
-              <span className="text-xs font-semibold tracking-wide">
+              <span className="text-xs font-semibold tracking-wide text-gray-200">
                 {isConnected ? 'CONNECTED' : 'DISCONNECTED'}
               </span>
             </motion.div>
@@ -43,39 +43,40 @@ function App() {
         </div>
       </motion.header>
 
-      {/* Top Control Panel */}
+      {/* Top Control Panel - Light theme */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.1 }}
-        className="border-b border-slate-700/50 bg-slate-800/40 backdrop-blur-sm px-8 py-4"
+        className="border-b border-gray-300 bg-gradient-to-r from-gray-50 to-white px-8 py-4 shadow-sm"
       >
         <ControlPanel />
       </motion.div>
 
       {/* Main Content Area */}
       <div className="flex-1 flex overflow-hidden gap-0">
-        {/* Left Panel - Event Stream (Full Height) */}
+        {/* Left Panel - Event Stream (Full Height) - Light theme */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="w-80 border-r border-slate-700/50 flex flex-col overflow-hidden bg-gradient-to-b from-slate-800/50 to-slate-900/50 backdrop-blur-sm"
+          className="w-80 border-r border-gray-300 flex flex-col overflow-hidden bg-white"
         >
-          {/* Leader Election Status */}
-          {logs.some((log) => log.includes('[ELECTION]')) && (
+          {/* Leader Election Status - Only show during active election */}
+          {electionInProgress && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="px-4 py-3 bg-amber-900/40 border-b border-amber-700/50 flex items-center gap-2"
+              exit={{ opacity: 0, y: -10 }}
+              className="px-4 py-3 bg-amber-50 border-b-2 border-amber-400 flex items-center gap-2"
             >
               <motion.div
                 animate={{ scale: [1, 1.2, 1] }}
-                transition={{ duration: 1, repeat: Infinity }}
-                className="w-2 h-2 rounded-full bg-amber-400"
+                transition={{ duration: 0.8, repeat: Infinity }}
+                className="w-2 h-2 rounded-full bg-amber-600"
               />
-              <span className="text-xs font-semibold text-amber-300 uppercase tracking-wider">
-                ⚡ Leader Election In Progress
+              <span className="text-xs font-semibold text-amber-700 uppercase tracking-wider">
+                🔄 Electing New Leader...
               </span>
             </motion.div>
           )}
@@ -85,22 +86,22 @@ function App() {
           </div>
         </motion.div>
 
-        {/* Center - Network Canvas */}
+        {/* Center - Network Canvas - Dark theme */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.3 }}
-          className="flex-1 border-r border-slate-700/50 bg-slate-900/20 relative"
+          className="flex-1 border-r border-gray-300 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative"
         >
           <NetworkCanvasEnhanced />
         </motion.div>
 
-        {/* Right Panel - Node Details (Full Height) */}
+        {/* Right Panel - Node Details (Full Height) - Light theme */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
-          className="w-96 border-l border-slate-700/50 overflow-hidden bg-gradient-to-b from-slate-800/50 to-slate-900/50 backdrop-blur-sm p-5"
+          className="w-96 border-l border-gray-300 overflow-hidden bg-white p-5 shadow-lg"
         >
           <div className="h-full overflow-y-auto">
             <NodeDetails />

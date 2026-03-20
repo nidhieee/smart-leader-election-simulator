@@ -11,28 +11,28 @@ export const LogPanel: React.FC = () => {
   }, [logs]);
 
   const getLogColor = (log: string): string => {
-    if (log.includes('[ELECTION]')) return 'text-amber-400';
-    if (log.includes('[FAILURE]')) return 'text-red-400';
-    if (log.includes('[NODE]')) return 'text-blue-300';
-    if (log.includes('[SIM]')) return 'text-cyan-400';
-    if (log.includes('[RECOVERY]')) return 'text-emerald-400';
-    if (log.includes('[DEGRADATION]')) return 'text-amber-300';
-    if (log.includes('[INIT]')) return 'text-slate-400';
-    if (log.includes('[HEARTBEAT]')) return 'text-slate-500';
-    return 'text-slate-300';
+    if (log.includes('[ELECTION]')) return 'text-orange-600';
+    if (log.includes('[FAILURE]')) return 'text-red-600';
+    if (log.includes('[NODE]')) return 'text-blue-700';
+    if (log.includes('[SIM]')) return 'text-blue-600';
+    if (log.includes('[RECOVERY]')) return 'text-green-700';
+    if (log.includes('[DEGRADATION]')) return 'text-orange-500';
+    if (log.includes('[INIT]')) return 'text-gray-600';
+    if (log.includes('[HEARTBEAT]')) return 'text-gray-500';
+    return 'text-gray-700';
   };
 
   return (
     <div className="w-full h-full flex flex-col">
-      <div className="px-4 py-3 border-b border-slate-700/50 bg-slate-800/40">
-        <h3 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
+      <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+        <h3 className="text-xs font-semibold text-gray-700 uppercase tracking-wider">
           Network Events
         </h3>
       </div>
 
       <div className="flex-1 overflow-y-auto font-mono text-xs space-y-0.5 px-4 py-3">
         {logs.length === 0 ? (
-          <div className="text-slate-600 py-4 italic text-center">Waiting for events...</div>
+          <div className="text-gray-500 py-4 italic text-center">Waiting for events...</div>
         ) : (
           logs.map((log, index) => (
             <motion.div
