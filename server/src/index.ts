@@ -4,7 +4,7 @@ import { createServer } from 'http';
 import { ClusterManager } from './simulation/ClusterManager';
 import { ElectionService } from './simulation/ElectionService';
 import { HeartbeatService } from './simulation/HeartbeatService';
-import { ClusterUpdate, NodeStatus } from './simulation/types';
+import { ClusterUpdate, NodeStatus, ElectionMessage } from './simulation/types';
 
 const app = express();
 const httpServer = createServer(app);
@@ -21,11 +21,13 @@ let isPaused = false;
 const eventLog: string[] = [];
 let clients: Set<WebSocket> = new Set();
 let broadcastInterval: NodeJS.Timeout | null = null;
+let electionInProgress = false;
 
 // Initialize cluster with some nodes
 function initializeCluster(): void {
   clusterManager.clear();
   eventLog.length = 0;
+  electionInProgress = false;
 
   for (let i = 0; i < 5; i++) {
     clusterManager.addNode(`Node-${i + 1}`);
@@ -34,6 +36,11 @@ function initializeCluster(): void {
   // Run initial election
   const leaderId = electionService.selectLeader();
   addLog(`[INIT] Leader elected: ${leaderId}`);
+  broadcastAnimationEvent({
+    type: 'COORDINATOR',
+    nodeId: leaderId || '',
+    timestamp: Date.now(),
+  });
 }
 
 function addLog(message: string): void {
@@ -45,17 +52,50 @@ function addLog(message: string): void {
   if (eventLog.length > 100) {
     eventLog.shift();
   }
+
+  console.log(logMessage);
+}
+
+interface AnimationEvent {
+  type: 'HEARTBEAT' | 'ELECTION' | 'RESPONSE' | 'COORDINATOR';
+  nodeId: string;
+  fromNode?: string;
+  toNode?: string;
+  timestamp: number;
+  positions?: { from: { x: number; y: number }; to: { x: number; y: number } };
+}
+
+function broadcastAnimationEvent(event: AnimationEvent): void {
+  const message = JSON.stringify({
+    type: 'animation-event',
+    event,
+  });
+
+  clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      try {
+        client.send(message);
+      } catch (error) {
+        console.error('Error sending animation event:', error);
+        clients.delete(client);
+      }
+    }
+  });
 }
 
 function broadcastUpdate(): void {
   const update: ClusterUpdate = {
     nodes: clusterManager.getNodeStates(),
     leader: clusterManager.getLeader(),
-    election: false,
+    election: electionInProgress,
     log: eventLog[eventLog.length - 1] || '',
   };
 
-  const message = JSON.stringify(update);
+  const message = JSON.stringify({
+    type: 'cluster-update',
+    data: update,
+  });
+
   clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       try {
@@ -71,11 +111,52 @@ function broadcastUpdate(): void {
 function startBroadcastLoop(): void {
   if (broadcastInterval) clearInterval(broadcastInterval);
   
+  let heartbeatCounter = 0;
+
   broadcastInterval = setInterval(() => {
     if (isRunning && !isPaused) {
+      heartbeatCounter++;
+
+      // Send heartbeat from leader every 2 seconds
+      if (heartbeatCounter % 2 === 0) {
+        const leaderId = clusterManager.getLeader();
+        if (leaderId) {
+          broadcastAnimationEvent({
+            type: 'HEARTBEAT',
+            nodeId: leaderId,
+            timestamp: Date.now(),
+          });
+        }
+      }
+
+      // Update node states
+      clusterManager.updateNodes();
+
+      // Check for leader failure and trigger election if needed
+      if (!electionInProgress) {
+        if (electionService.shouldTriggerElection()) {
+          electionInProgress = true;
+          addLog('[ELECTION] Initiating leader election...');
+
+          // Simulate election process
+          setTimeout(() => {
+            const newLeaderId = electionService.selectLeader();
+            addLog(`[ELECTION] Leader elected: ${newLeaderId}`);
+            broadcastAnimationEvent({
+              type: 'COORDINATOR',
+              nodeId: newLeaderId || '',
+              timestamp: Date.now(),
+            });
+            electionInProgress = false;
+            broadcastUpdate();
+          }, 1000);
+        }
+      }
+
+      // Regular broadcast
       broadcastUpdate();
     }
-  }, 1000); // Broadcast every 1 second
+  }, 500); // Update every 500ms for smoother animations
 }
 
 function stopBroadcastLoop(): void {
@@ -88,18 +169,21 @@ function stopBroadcastLoop(): void {
 // WebSocket handlers
 wss.on('connection', (ws: WebSocket) => {
   clients.add(ws);
-  console.log('Client connected. Total clients:', clients.size);
+  console.log(`✓ Client connected. Total clients: ${clients.size}`);
 
   // Send initial state immediately
   const update: ClusterUpdate = {
     nodes: clusterManager.getNodeStates(),
     leader: clusterManager.getLeader(),
-    election: false,
+    election: electionInProgress,
     log: '',
   };
   
   try {
-    ws.send(JSON.stringify(update));
+    ws.send(JSON.stringify({
+      type: 'cluster-update',
+      data: update,
+    }));
   } catch (error) {
     console.error('Error sending initial state:', error);
   }
@@ -115,7 +199,7 @@ wss.on('connection', (ws: WebSocket) => {
 
   ws.on('close', () => {
     clients.delete(ws);
-    console.log('Client disconnected. Total clients:', clients.size);
+    console.log(`✗ Client disconnected. Total clients: ${clients.size}`);
   });
 
   ws.on('error', (error) => {
@@ -141,10 +225,24 @@ function handleCommand(data: any, ws: WebSocket): void {
       if (!isRunning) {
         isRunning = true;
         isPaused = false;
+        electionInProgress = false;
         initializeCluster();
         heartbeatService.startLoop();
         heartbeatService.setElectionCallback(() => {
-          addLog(`[ELECTION] New leader elected: ${clusterManager.getLeader()}`);
+          if (!electionInProgress) {
+            electionInProgress = true;
+            addLog(`[ELECTION] Detecting failed leader...`);
+            const newLeader = clusterManager.getLeader();
+            if (newLeader) {
+              addLog(`[ELECTION] New leader elected: ${newLeader}`);
+              broadcastAnimationEvent({
+                type: 'COORDINATOR',
+                nodeId: newLeader,
+                timestamp: Date.now(),
+              });
+            }
+            electionInProgress = false;
+          }
         });
         startBroadcastLoop();
         addLog('[SIM] Simulation started');
@@ -155,7 +253,6 @@ function handleCommand(data: any, ws: WebSocket): void {
     case 'pause':
       if (isRunning && !isPaused) {
         isPaused = true;
-        heartbeatService.stopLoop();
         addLog('[SIM] Simulation paused');
         broadcastUpdate();
       }
@@ -164,7 +261,6 @@ function handleCommand(data: any, ws: WebSocket): void {
     case 'resume':
       if (isRunning && isPaused) {
         isPaused = false;
-        heartbeatService.startLoop();
         addLog('[SIM] Simulation resumed');
         broadcastUpdate();
       }
@@ -173,6 +269,7 @@ function handleCommand(data: any, ws: WebSocket): void {
     case 'reset':
       isRunning = false;
       isPaused = false;
+      electionInProgress = false;
       heartbeatService.stopLoop();
       stopBroadcastLoop();
       clusterManager.clear();
@@ -217,8 +314,18 @@ function handleCommand(data: any, ws: WebSocket): void {
 
         if (nodeId === clusterManager.getLeader()) {
           addLog('[ELECTION] Leader crashed, starting new election');
-          electionService.selectLeader();
-          addLog(`[ELECTION] New leader elected: ${clusterManager.getLeader()}`);
+          if (!electionInProgress) {
+            electionInProgress = true;
+            electionService.selectLeader();
+            const newLeader = clusterManager.getLeader();
+            addLog(`[ELECTION] New leader elected: ${newLeader}`);
+            broadcastAnimationEvent({
+              type: 'COORDINATOR',
+              nodeId: newLeader || '',
+              timestamp: Date.now(),
+            });
+            electionInProgress = false;
+          }
         }
 
         broadcastUpdate();
@@ -234,8 +341,18 @@ function handleCommand(data: any, ws: WebSocket): void {
           const leader = clusterManager.getNode(nodeId);
           if (leader && leader.getHealthScore() < 20) {
             addLog('[ELECTION] Leader degraded, starting new election');
-            electionService.selectLeader();
-            addLog(`[ELECTION] New leader elected: ${clusterManager.getLeader()}`);
+            if (!electionInProgress) {
+              electionInProgress = true;
+              electionService.selectLeader();
+              const newLeader = clusterManager.getLeader();
+              addLog(`[ELECTION] New leader elected: ${newLeader}`);
+              broadcastAnimationEvent({
+                type: 'COORDINATOR',
+                nodeId: newLeader || '',
+                timestamp: Date.now(),
+              });
+              electionInProgress = false;
+            }
           }
         }
 

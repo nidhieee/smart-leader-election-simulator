@@ -1,6 +1,15 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { NodeState, ClusterUpdate } from '../types';
 
+export interface AnimationEvent {
+  type: 'HEARTBEAT' | 'ELECTION' | 'RESPONSE' | 'COORDINATOR';
+  nodeId: string;
+  fromNode?: string;
+  toNode?: string;
+  timestamp: number;
+  positions?: { from: { x: number; y: number }; to: { x: number; y: number } };
+}
+
 interface SimulationContextType {
   nodes: NodeState[];
   leader: string | null;
@@ -12,6 +21,8 @@ interface SimulationContextType {
   updateCluster: (update: ClusterUpdate) => void;
   sendCommand: (command: string, nodeId?: string) => void;
   isConnected: boolean;
+  animationEvents: AnimationEvent[];
+  clearAnimationEvent: (index: number) => void;
 }
 
 const SimulationContext = createContext<SimulationContextType | undefined>(
@@ -37,16 +48,18 @@ export const SimulationProvider: React.FC<SimulationProviderProps> = ({
 }) => {
   const [nodes, setNodes] = useState<NodeState[]>([]);
   const [leader, setLeader] = useState<string | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [animationEvents, setAnimationEvents] = useState<AnimationEvent[]>([]);
   
   // Use ref to hold WebSocket instance and prevent recreation
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isConnectingRef = useRef(false);
+  const connectionAttempts = useRef(0);
+  const MAX_RECONNECT_ATTEMPTS = 10;
+  const RECONNECT_DELAY = 2000;
 
   const updateCluster = useCallback((update: ClusterUpdate) => {
     setNodes(update.nodes);
@@ -55,6 +68,10 @@ export const SimulationProvider: React.FC<SimulationProviderProps> = ({
     if (update.log) {
       setLogs((prev) => [...prev.slice(-99), update.log]);
     }
+  }, []);
+
+  const clearAnimationEvent = useCallback((index: number) => {
+    setAnimationEvents((prev) => prev.filter((_, i) => i !== index));
   }, []);
 
   const sendCommand = useCallback(
@@ -77,6 +94,11 @@ export const SimulationProvider: React.FC<SimulationProviderProps> = ({
   useEffect(() => {
     // Only connect if not already connecting
     if (isConnectingRef.current) return;
+    if (connectionAttempts.current >= MAX_RECONNECT_ATTEMPTS) {
+      console.error('Max reconnection attempts reached');
+      return;
+    }
+
     isConnectingRef.current = true;
 
     const connectWebSocket = () => {
@@ -88,6 +110,7 @@ export const SimulationProvider: React.FC<SimulationProviderProps> = ({
           setIsConnected(true);
           wsRef.current = websocket;
           isConnectingRef.current = false;
+          connectionAttempts.current = 0;
 
           // Clear any pending reconnect timeout
           if (reconnectTimeoutRef.current) {
@@ -98,8 +121,23 @@ export const SimulationProvider: React.FC<SimulationProviderProps> = ({
 
         websocket.onmessage = (event) => {
           try {
-            const data = JSON.parse(event.data);
-            updateCluster(data);
+            const message = JSON.parse(event.data);
+
+            if (message.type === 'cluster-update') {
+              updateCluster(message.data);
+            } else if (message.type === 'animation-event') {
+              // Add animation event with auto-clear after 2 seconds
+              setAnimationEvents((prev) => [
+                ...prev,
+                message.event as AnimationEvent,
+              ]);
+
+              setTimeout(() => {
+                setAnimationEvents((prev) =>
+                  prev.filter((e) => e.timestamp !== message.event.timestamp)
+                );
+              }, 2000);
+            }
           } catch (error) {
             console.error('Error parsing message:', error);
           }
@@ -111,11 +149,16 @@ export const SimulationProvider: React.FC<SimulationProviderProps> = ({
           wsRef.current = null;
           isConnectingRef.current = false;
 
-          // Attempt to reconnect after 2 seconds
-          reconnectTimeoutRef.current = setTimeout(() => {
-            console.log('Attempting to reconnect...');
-            connectWebSocket();
-          }, 2000);
+          // Attempt to reconnect after delay
+          if (connectionAttempts.current < MAX_RECONNECT_ATTEMPTS) {
+            connectionAttempts.current += 1;
+            console.log(
+              `Reconnection attempt ${connectionAttempts.current}/${MAX_RECONNECT_ATTEMPTS}...`
+            );
+            reconnectTimeoutRef.current = setTimeout(() => {
+              connectWebSocket();
+            }, RECONNECT_DELAY);
+          }
         };
 
         websocket.onerror = (error) => {
@@ -148,13 +191,15 @@ export const SimulationProvider: React.FC<SimulationProviderProps> = ({
     nodes,
     leader,
     isRunning: nodes.length > 0,
-    isPaused,
+    isPaused: false,
     logs,
     selectedNode,
     setSelectedNode,
     updateCluster,
     sendCommand,
     isConnected,
+    animationEvents,
+    clearAnimationEvent,
   };
 
   return (

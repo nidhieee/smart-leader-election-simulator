@@ -21,3 +21,12 @@ export interface ClusterUpdate {
   election: boolean;
   log: string;
 }
+
+export interface AnimationEvent {
+  type: 'HEARTBEAT' | 'ELECTION' | 'RESPONSE' | 'COORDINATOR';
+  nodeId: string;
+  fromNode?: string;
+  toNode?: string;
+  timestamp: number;
+  positions?: { from: { x: number; y: number }; to: { x: number; y: number } };
+}

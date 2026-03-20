@@ -1,12 +1,11 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NetworkCanvas } from './NetworkCanvas';
-import { NodeCard } from './NodeCard';
 import { useSimulation } from '../hooks/useSimulation';
 import { NodeStatus } from '../types';
 
 export const ClusterView: React.FC = () => {
-  const { nodes, selectedNode, setSelectedNode, leader } = useSimulation();
+  const { nodes, selectedNode, setSelectedNode } = useSimulation();
 
   const healthyCount = nodes.filter((n) => n.status === NodeStatus.HEALTHY).length;
   const degradedCount = nodes.filter((n) => n.status === NodeStatus.DEGRADED).length;

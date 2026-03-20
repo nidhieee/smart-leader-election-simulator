@@ -52,7 +52,7 @@ export const NetworkCanvas: React.FC = () => {
       >
         {/* Draw edges from each node to leader */}
         {leader &&
-          nodePositions.map((pos, idx) => {
+          nodePositions.map((pos) => {
             const leaderPos = nodePositions.find((p) => p.id === leader);
             if (!leaderPos || pos.id === leader) return null;
 

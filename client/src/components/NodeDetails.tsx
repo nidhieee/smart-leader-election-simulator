@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useSimulation } from '../hooks/useSimulation';
 import { NodeStatus } from '../types';
+import { fadeInUp } from '../utils/animationVariants';
 
 export const NodeDetails: React.FC = () => {
   const { nodes, selectedNode } = useSimulation();
@@ -11,174 +12,165 @@ export const NodeDetails: React.FC = () => {
   if (!selectedNode || !node) {
     return (
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-        className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 rounded-lg shadow-xl"
+        variants={fadeInUp}
+        initial="initial"
+        animate="animate"
+        className="text-center py-8"
       >
-        <h2 className="text-2xl font-bold text-white mb-4">Node Details</h2>
-        <div className="text-gray-400 text-center py-12">
-          Select a node to view detailed information
+        <div className="text-gray-500 text-sm">
+          <div className="mb-2 text-2xl">👆</div>
+          Click a node to view details
         </div>
       </motion.div>
     );
   }
 
-  const getStatusBgColor = (status: NodeStatus) => {
+  const getStatusColor = (status: NodeStatus) => {
     switch (status) {
       case NodeStatus.HEALTHY:
-        return 'bg-green-500/20 border-green-500/50';
+        return 'text-green-400';
       case NodeStatus.DEGRADED:
-        return 'bg-yellow-500/20 border-yellow-500/50';
+        return 'text-yellow-400';
       case NodeStatus.FAILED:
-        return 'bg-red-500/20 border-red-500/50';
+        return 'text-red-400';
     }
   };
 
-  const metrics = [
-    {
-      label: 'Health Score',
-      value: node.healthScore.toFixed(2),
-      unit: '/100',
-      color: node.healthScore > 50 ? 'text-green-400' : node.healthScore > 0 ? 'text-yellow-400' : 'text-red-400',
-    },
-    {
-      label: 'CPU Usage',
-      value: node.cpu.toFixed(2),
-      unit: '%',
-      color: node.cpu > 70 ? 'text-red-400' : node.cpu > 40 ? 'text-yellow-400' : 'text-green-400',
-    },
-    {
-      label: 'Memory Usage',
-      value: node.memory.toFixed(2),
-      unit: '%',
-      color: node.memory > 70 ? 'text-red-400' : node.memory > 40 ? 'text-yellow-400' : 'text-green-400',
-    },
-    {
-      label: 'Uptime',
-      value: node.uptime.toFixed(2),
-      unit: '%',
-      color: 'text-blue-400',
-    },
-  ];
-
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: 0.3 }}
-      className="p-6 bg-gradient-to-br from-slate-900 to-slate-800 rounded-lg shadow-xl"
+      variants={fadeInUp}
+      initial="initial"
+      animate="animate"
+      className="space-y-4"
     >
-      <h2 className="text-2xl font-bold text-white mb-6">Node Details</h2>
-
       {/* Node Header */}
-      <div
-        className={`p-4 rounded-lg border mb-6 ${getStatusBgColor(node.status)}`}
-      >
-        <div className="flex justify-between items-start">
-          <div>
-            <h3 className="text-xl font-bold text-white">{node.id}</h3>
-            <p className="text-sm text-gray-300 mt-1">
-              Status: <span className="font-semibold">{node.status}</span>
-            </p>
-          </div>
+      <div className="border-l-4 border-cyan-500 pl-4">
+        <h3 className="text-lg font-bold text-white">{node.id}</h3>
+        <div className="flex items-center gap-2 mt-1">
+          <div
+            className={`w-2 h-2 rounded-full ${
+              node.status === NodeStatus.HEALTHY
+                ? 'bg-green-500'
+                : node.status === NodeStatus.DEGRADED
+                  ? 'bg-yellow-500'
+                  : 'bg-red-500'
+            }`}
+          ></div>
+          <span className={`text-xs font-semibold capitalize ${getStatusColor(node.status)}`}>
+            {node.status}
+          </span>
           {node.isLeader && (
-            <div className="bg-yellow-500 text-black px-3 py-1 rounded font-bold text-sm">
-              LEADER
-            </div>
+            <span className="text-xs bg-cyan-500/30 text-cyan-300 px-2 py-0.5 rounded font-bold">
+              ★ Leader
+            </span>
           )}
         </div>
       </div>
 
-      {/* Metrics Grid */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        {metrics.map((metric) => (
-          <div
-            key={metric.label}
-            className="bg-slate-700/50 p-4 rounded-lg border border-slate-600"
-          >
-            <p className="text-xs text-gray-400 mb-2">{metric.label}</p>
-            <p className={`text-2xl font-bold ${metric.color}`}>
-              {metric.value}
-              <span className="text-sm ml-1">{metric.unit}</span>
-            </p>
-          </div>
-        ))}
-      </div>
+      {/* Key Metrics */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-slate-700/40 p-3 rounded border border-slate-600/50">
+          <p className="text-xs text-gray-400 mb-1">Health</p>
+          <p className={`text-lg font-bold ${
+            node.healthScore > 50
+              ? 'text-green-400'
+              : node.healthScore > 0
+                ? 'text-yellow-400'
+                : 'text-red-400'
+          }`}>
+            {node.healthScore.toFixed(0)}
+          </p>
+        </div>
 
-      {/* Detailed Info */}
-      <div className="bg-slate-700/50 p-4 rounded-lg border border-slate-600">
-        <h4 className="text-sm font-semibold text-white mb-3">
-          Additional Information
-        </h4>
-        <div className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-gray-400">Last Heartbeat:</span>
-            <span className="text-gray-200">
-              {new Date(node.lastHeartbeat).toLocaleTimeString()}
-            </span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-400">Status:</span>
-            <span className="text-gray-200 capitalize">{node.status}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-400">Leader:</span>
-            <span className="text-gray-200">
-              {node.isLeader ? 'Yes' : 'No'}
-            </span>
-          </div>
+        <div className="bg-slate-700/40 p-3 rounded border border-slate-600/50">
+          <p className="text-xs text-gray-400 mb-1">Uptime</p>
+          <p className="text-lg font-bold text-blue-400">
+            {node.uptime.toFixed(0)}%
+          </p>
+        </div>
+
+        <div className="bg-slate-700/40 p-3 rounded border border-slate-600/50">
+          <p className="text-xs text-gray-400 mb-1">CPU</p>
+          <p className={`text-lg font-bold ${
+            node.cpu > 70 ? 'text-red-400' : node.cpu > 40 ? 'text-yellow-400' : 'text-green-400'
+          }`}>
+            {node.cpu.toFixed(0)}%
+          </p>
+        </div>
+
+        <div className="bg-slate-700/40 p-3 rounded border border-slate-600/50">
+          <p className="text-xs text-gray-400 mb-1">Memory</p>
+          <p className={`text-lg font-bold ${
+            node.memory > 70 ? 'text-red-400' : node.memory > 40 ? 'text-yellow-400' : 'text-green-400'
+          }`}>
+            {node.memory.toFixed(0)}%
+          </p>
         </div>
       </div>
 
       {/* Progress Bars */}
-      <div className="mt-6 space-y-3">
+      <div className="space-y-2">
         <div>
           <div className="flex justify-between mb-1">
-            <span className="text-xs text-gray-400">CPU Utilization</span>
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-400">CPU Usage</span>
+            <span className={`text-xs font-semibold ${node.cpu > 70 ? 'text-red-400' : 'text-gray-400'}`}>
               {node.cpu.toFixed(1)}%
             </span>
           </div>
-          <div className="w-full bg-slate-700 rounded-full h-2">
-            <div
-              className="bg-gradient-to-r from-green-500 to-red-500 h-2 rounded-full transition-all"
-              style={{ width: `${Math.min(100, node.cpu)}%` }}
-            ></div>
+          <div className="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
+            <motion.div
+              className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-full"
+              animate={{ width: `${Math.min(100, node.cpu)}%` }}
+              transition={{ duration: 0.5 }}
+            />
           </div>
         </div>
 
         <div>
           <div className="flex justify-between mb-1">
-            <span className="text-xs text-gray-400">Memory Utilization</span>
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-400">Memory Usage</span>
+            <span className={`text-xs font-semibold ${node.memory > 70 ? 'text-red-400' : 'text-gray-400'}`}>
               {node.memory.toFixed(1)}%
             </span>
           </div>
-          <div className="w-full bg-slate-700 rounded-full h-2">
-            <div
-              className="bg-gradient-to-r from-green-500 to-red-500 h-2 rounded-full transition-all"
-              style={{ width: `${Math.min(100, node.memory)}%` }}
-            ></div>
+          <div className="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
+            <motion.div
+              className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-full"
+              animate={{ width: `${Math.min(100, node.memory)}%` }}
+              transition={{ duration: 0.5 }}
+            />
           </div>
         </div>
 
         <div>
           <div className="flex justify-between mb-1">
             <span className="text-xs text-gray-400">Health Score</span>
-            <span className="text-xs text-gray-400">
+            <span className={`text-xs font-semibold ${
+              node.healthScore > 50
+                ? 'text-green-400'
+                : node.healthScore > 0
+                  ? 'text-yellow-400'
+                  : 'text-red-400'
+            }`}>
               {node.healthScore.toFixed(1)}/100
             </span>
           </div>
-          <div className="w-full bg-slate-700 rounded-full h-2">
-            <div
-              className="bg-gradient-to-r from-red-500 to-green-500 h-2 rounded-full transition-all"
-              style={{
-                width: `${Math.max(0, Math.min(100, node.healthScore))}%`,
-              }}
-            ></div>
+          <div className="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
+            <motion.div
+              className="bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 h-full"
+              animate={{ width: `${Math.max(0, Math.min(100, node.healthScore + 50))}%` }}
+              transition={{ duration: 0.5 }}
+            />
           </div>
         </div>
+      </div>
+
+      {/* Last Heartbeat */}
+      <div className="bg-slate-700/40 p-2 rounded border border-slate-600/50 text-xs">
+        <span className="text-gray-400">Last Heartbeat: </span>
+        <span className="text-gray-300">
+          {new Date(node.lastHeartbeat).toLocaleTimeString()}
+        </span>
       </div>
     </motion.div>
   );
