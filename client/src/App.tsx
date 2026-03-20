@@ -20,10 +20,9 @@ function App() {
         <div className="px-8 py-5">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight">
-                Smart Leader Election
+              <h1 className="text-4xl font-bold bg-clip-text uppercase text-transparent bg-gradient-to-r from-cyan-400 to-blue-500 tracking-tight">
+                Smart Leader Election Simulator
               </h1>
-              <p className="text-slate-500 text-xs mt-1 tracking-widest font-semibold">DISTRIBUTED CONSENSUS SIMULATOR</p>
             </div>
             <motion.div
               animate={{
