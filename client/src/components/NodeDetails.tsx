@@ -15,11 +15,15 @@ export const NodeDetails: React.FC = () => {
         variants={fadeInUp}
         initial="initial"
         animate="animate"
-        className="text-center py-8"
+        className="h-full flex items-center justify-center"
       >
-        <div className="text-gray-500 text-sm">
-          <div className="mb-2 text-2xl">👆</div>
-          Click a node to view details
+        <div className="text-center">
+          <div className="mb-3 text-slate-500">
+            <div className="text-3xl font-light tracking-wide">⊕</div>
+          </div>
+          <div className="text-slate-400 text-sm">
+            Select a node on the canvas to view details
+          </div>
         </div>
       </motion.div>
     );
@@ -28,11 +32,22 @@ export const NodeDetails: React.FC = () => {
   const getStatusColor = (status: NodeStatus) => {
     switch (status) {
       case NodeStatus.HEALTHY:
-        return 'text-green-400';
+        return 'text-emerald-400';
       case NodeStatus.DEGRADED:
-        return 'text-yellow-400';
+        return 'text-amber-400';
       case NodeStatus.FAILED:
         return 'text-red-400';
+    }
+  };
+
+  const getStatusBg = (status: NodeStatus) => {
+    switch (status) {
+      case NodeStatus.HEALTHY:
+        return 'bg-emerald-500/10 border-emerald-600/30';
+      case NodeStatus.DEGRADED:
+        return 'bg-amber-500/10 border-amber-600/30';
+      case NodeStatus.FAILED:
+        return 'bg-red-500/10 border-red-600/30';
     }
   };
 
@@ -41,18 +56,18 @@ export const NodeDetails: React.FC = () => {
       variants={fadeInUp}
       initial="initial"
       animate="animate"
-      className="space-y-4"
+      className="space-y-4 h-full overflow-y-auto"
     >
       {/* Node Header */}
-      <div className="border-l-4 border-cyan-500 pl-4">
-        <h3 className="text-lg font-bold text-white">{node.id}</h3>
-        <div className="flex items-center gap-2 mt-1">
+      <div className={`border-l-4 border-cyan-500 pl-4 py-1 ${getStatusBg(node.status)} px-3 rounded-r border`}>
+        <h3 className="text-base font-bold text-slate-100">{node.id}</h3>
+        <div className="flex items-center gap-2 mt-2 flex-wrap">
           <div
             className={`w-2 h-2 rounded-full ${
               node.status === NodeStatus.HEALTHY
-                ? 'bg-green-500'
+                ? 'bg-emerald-500'
                 : node.status === NodeStatus.DEGRADED
-                  ? 'bg-yellow-500'
+                  ? 'bg-amber-500'
                   : 'bg-red-500'
             }`}
           ></div>
@@ -60,48 +75,48 @@ export const NodeDetails: React.FC = () => {
             {node.status}
           </span>
           {node.isLeader && (
-            <span className="text-xs bg-cyan-500/30 text-cyan-300 px-2 py-0.5 rounded font-bold">
-              ★ Leader
+            <span className="text-xs bg-cyan-500/20 text-cyan-300 px-2 py-0.5 rounded font-semibold border border-cyan-600/30">
+              ★ LEADER
             </span>
           )}
         </div>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-slate-700/40 p-3 rounded border border-slate-600/50">
-          <p className="text-xs text-gray-400 mb-1">Health</p>
+      {/* Key Metrics Grid */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="bg-slate-800/50 p-3 rounded border border-slate-700/50">
+          <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Health</p>
           <p className={`text-lg font-bold ${
             node.healthScore > 50
-              ? 'text-green-400'
+              ? 'text-emerald-400'
               : node.healthScore > 0
-                ? 'text-yellow-400'
+                ? 'text-amber-400'
                 : 'text-red-400'
           }`}>
             {node.healthScore.toFixed(0)}
           </p>
         </div>
 
-        <div className="bg-slate-700/40 p-3 rounded border border-slate-600/50">
-          <p className="text-xs text-gray-400 mb-1">Uptime</p>
-          <p className="text-lg font-bold text-blue-400">
+        <div className="bg-slate-800/50 p-3 rounded border border-slate-700/50">
+          <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Uptime</p>
+          <p className="text-lg font-bold text-cyan-400">
             {node.uptime.toFixed(0)}%
           </p>
         </div>
 
-        <div className="bg-slate-700/40 p-3 rounded border border-slate-600/50">
-          <p className="text-xs text-gray-400 mb-1">CPU</p>
+        <div className="bg-slate-800/50 p-3 rounded border border-slate-700/50">
+          <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">CPU</p>
           <p className={`text-lg font-bold ${
-            node.cpu > 70 ? 'text-red-400' : node.cpu > 40 ? 'text-yellow-400' : 'text-green-400'
+            node.cpu > 70 ? 'text-red-400' : node.cpu > 40 ? 'text-amber-400' : 'text-emerald-400'
           }`}>
             {node.cpu.toFixed(0)}%
           </p>
         </div>
 
-        <div className="bg-slate-700/40 p-3 rounded border border-slate-600/50">
-          <p className="text-xs text-gray-400 mb-1">Memory</p>
+        <div className="bg-slate-800/50 p-3 rounded border border-slate-700/50">
+          <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider mb-1">Memory</p>
           <p className={`text-lg font-bold ${
-            node.memory > 70 ? 'text-red-400' : node.memory > 40 ? 'text-yellow-400' : 'text-green-400'
+            node.memory > 70 ? 'text-red-400' : node.memory > 40 ? 'text-amber-400' : 'text-emerald-400'
           }`}>
             {node.memory.toFixed(0)}%
           </p>
@@ -109,17 +124,17 @@ export const NodeDetails: React.FC = () => {
       </div>
 
       {/* Progress Bars */}
-      <div className="space-y-2">
+      <div className="space-y-3">
         <div>
           <div className="flex justify-between mb-1">
-            <span className="text-xs text-gray-400">CPU Usage</span>
-            <span className={`text-xs font-semibold ${node.cpu > 70 ? 'text-red-400' : 'text-gray-400'}`}>
+            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">CPU Usage</span>
+            <span className={`text-xs font-semibold ${node.cpu > 70 ? 'text-red-400' : 'text-slate-400'}`}>
               {node.cpu.toFixed(1)}%
             </span>
           </div>
-          <div className="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
+          <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700/50">
             <motion.div
-              className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-full"
+              className="bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 h-full"
               animate={{ width: `${Math.min(100, node.cpu)}%` }}
               transition={{ duration: 0.5 }}
             />
@@ -128,14 +143,14 @@ export const NodeDetails: React.FC = () => {
 
         <div>
           <div className="flex justify-between mb-1">
-            <span className="text-xs text-gray-400">Memory Usage</span>
-            <span className={`text-xs font-semibold ${node.memory > 70 ? 'text-red-400' : 'text-gray-400'}`}>
+            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Memory Usage</span>
+            <span className={`text-xs font-semibold ${node.memory > 70 ? 'text-red-400' : 'text-slate-400'}`}>
               {node.memory.toFixed(1)}%
             </span>
           </div>
-          <div className="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
+          <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700/50">
             <motion.div
-              className="bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 h-full"
+              className="bg-gradient-to-r from-emerald-500 via-amber-500 to-red-500 h-full"
               animate={{ width: `${Math.min(100, node.memory)}%` }}
               transition={{ duration: 0.5 }}
             />
@@ -144,20 +159,20 @@ export const NodeDetails: React.FC = () => {
 
         <div>
           <div className="flex justify-between mb-1">
-            <span className="text-xs text-gray-400">Health Score</span>
+            <span className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Health Score</span>
             <span className={`text-xs font-semibold ${
               node.healthScore > 50
-                ? 'text-green-400'
+                ? 'text-emerald-400'
                 : node.healthScore > 0
-                  ? 'text-yellow-400'
+                  ? 'text-amber-400'
                   : 'text-red-400'
             }`}>
               {node.healthScore.toFixed(1)}/100
             </span>
           </div>
-          <div className="w-full bg-slate-700 rounded-full h-1.5 overflow-hidden">
+          <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700/50">
             <motion.div
-              className="bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 h-full"
+              className="bg-gradient-to-r from-red-500 via-amber-500 to-emerald-500 h-full"
               animate={{ width: `${Math.max(0, Math.min(100, node.healthScore + 50))}%` }}
               transition={{ duration: 0.5 }}
             />
@@ -166,9 +181,9 @@ export const NodeDetails: React.FC = () => {
       </div>
 
       {/* Last Heartbeat */}
-      <div className="bg-slate-700/40 p-2 rounded border border-slate-600/50 text-xs">
-        <span className="text-gray-400">Last Heartbeat: </span>
-        <span className="text-gray-300">
+      <div className="bg-slate-800/50 p-2.5 rounded border border-slate-700/50 text-xs">
+        <span className="text-slate-500">Last Heartbeat: </span>
+        <span className="text-slate-300 font-mono">
           {new Date(node.lastHeartbeat).toLocaleTimeString()}
         </span>
       </div>

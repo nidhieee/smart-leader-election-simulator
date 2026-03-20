@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useSimulationContext } from '../context/SimulationContext';
 import { NodeStatus } from '../types';
@@ -9,29 +9,73 @@ interface NodePosition {
   y: number;
 }
 
+interface DragState {
+  [key: string]: { x: number; y: number };
+}
+
 const CANVAS_WIDTH = 1200;
 const CANVAS_HEIGHT = 600;
+const PADDING = 60;
 
 export const NetworkCanvasEnhanced: React.FC = () => {
   const { nodes, leader, selectedNode, setSelectedNode, animationEvents } =
     useSimulationContext();
   const svgRef = useRef<SVGSVGElement>(null);
+  const [dragState, setDragState] = useState<DragState>({});
+  const [draggingNode, setDraggingNode] = useState<string | null>(null);
 
   // Calculate node positions in a circular topology
   const nodePositions: NodePosition[] = useMemo(() => {
     if (nodes.length === 0) return [];
 
-    const centerX = CANVAS_WIDTH / 2;
-    const centerY = CANVAS_HEIGHT / 2;
-    const radius = Math.min(CANVAS_WIDTH, CANVAS_HEIGHT) * 0.35;
+    const centerX = (CANVAS_WIDTH - 2 * PADDING) / 2 + PADDING;
+    const centerY = (CANVAS_HEIGHT - 2 * PADDING) / 2 + PADDING;
+    const radius = Math.min(CANVAS_WIDTH, CANVAS_HEIGHT) * 0.3 - PADDING;
     const angleSlice = (Math.PI * 2) / Math.max(nodes.length, 1);
 
-    return nodes.map((node, index) => ({
-      id: node.id,
-      x: centerX + radius * Math.cos(index * angleSlice - Math.PI / 2),
-      y: centerY + radius * Math.sin(index * angleSlice - Math.PI / 2),
+    return nodes.map((node, index) => {
+      if (dragState[node.id]) {
+        return {
+          id: node.id,
+          x: dragState[node.id].x,
+          y: dragState[node.id].y,
+        };
+      }
+
+      return {
+        id: node.id,
+        x: centerX + radius * Math.cos(index * angleSlice - Math.PI / 2),
+        y: centerY + radius * Math.sin(index * angleSlice - Math.PI / 2),
+      };
+    });
+  }, [nodes, dragState]);
+
+  const handleMouseDown = (nodeId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    setDraggingNode(nodeId);
+  };
+
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!draggingNode || !svgRef.current) return;
+
+    const svg = svgRef.current;
+    const rect = svg.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Constrain within canvas
+    const constrainedX = Math.max(PADDING + 28, Math.min(CANVAS_WIDTH - PADDING - 28, x));
+    const constrainedY = Math.max(PADDING + 28, Math.min(CANVAS_HEIGHT - PADDING - 28, y));
+
+    setDragState((prev) => ({
+      ...prev,
+      [draggingNode]: { x: constrainedX, y: constrainedY },
     }));
-  }, [nodes]);
+  };
+
+  const handleMouseUp = () => {
+    setDraggingNode(null);
+  };
 
   const getNodeColor = (nodeId: string, isLeader: boolean) => {
     const node = nodes.find((n) => n.id === nodeId);
@@ -43,9 +87,9 @@ export const NetworkCanvasEnhanced: React.FC = () => {
 
     switch (node.status) {
       case NodeStatus.HEALTHY:
-        return '#22c55e'; // Green
+        return '#10b981'; // Green
       case NodeStatus.DEGRADED:
-        return '#eab308'; // Yellow
+        return '#f59e0b'; // Amber
       case NodeStatus.FAILED:
         return '#ef4444'; // Red
       default:
@@ -83,7 +127,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
                 stroke="#64748b"
                 strokeWidth="1.5"
                 strokeDasharray={`${dashLength},${dashGap}`}
-                opacity="0.4"
+                opacity="0.3"
                 animate={{ strokeDashoffset: dashOffset }}
                 transition={{ duration: 8, repeat: Infinity, ease: 'linear' }}
               />
@@ -91,8 +135,8 @@ export const NetworkCanvasEnhanced: React.FC = () => {
           })}
 
         {/* Draw edges between adjacent nodes */}
-        {nodePositions.map((pos, idx) => {
-          const nextIdx = (idx + 1) % nodePositions.length;
+        {nodePositions.map((pos) => {
+          const nextIdx = (nodePositions.indexOf(pos) + 1) % nodePositions.length;
           const nextPos = nodePositions[nextIdx];
 
           return (
@@ -104,7 +148,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
               y2={nextPos.y}
               stroke="#475569"
               strokeWidth="1"
-              opacity="0.2"
+              opacity="0.15"
             />
           );
         })}
@@ -125,7 +169,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
               cy={nodePos.y}
               r="0"
               fill="none"
-              stroke="#22c55e"
+              stroke="#10b981"
               strokeWidth="2"
               animate={{
                 r: [0, 40],
@@ -174,9 +218,9 @@ export const NetworkCanvasEnhanced: React.FC = () => {
         <motion.g
           key={pos.id}
           onClick={() => setSelectedNode(pos.id)}
-          style={{ cursor: 'pointer' }}
-          whileHover={{ scale: 1.15 }}
-          whileTap={{ scale: 0.9 }}
+          onMouseDown={(e) => handleMouseDown(pos.id, e as any)}
+          style={{ cursor: draggingNode === pos.id ? 'grabbing' : 'grab' }}
+          whileHover={{ scale: 1.1 }}
         >
           {/* Leader glow effect */}
           {isLeader && (
@@ -187,10 +231,10 @@ export const NetworkCanvasEnhanced: React.FC = () => {
               fill="none"
               stroke="#06b6d4"
               strokeWidth="1"
-              opacity="0.3"
+              opacity="0.2"
               animate={{
-                r: [45, 55, 45] as unknown as number,
-                opacity: [0.3, 0.1, 0.3],
+                r: [45, 55, 45],
+                opacity: [0.2, 0.05, 0.2],
               }}
               transition={{
                 duration: 2,
@@ -201,20 +245,44 @@ export const NetworkCanvasEnhanced: React.FC = () => {
           )}
 
           {/* Node circle */}
-          <motion.circle
+          <circle
             cx={pos.x}
             cy={pos.y}
             r="28"
-            fill="rgba(15, 23, 42, 0.8)"
+            fill="rgba(15, 23, 42, 0.9)"
             stroke={color}
             strokeWidth={isLeader ? '3' : isSelected ? '2.5' : '2'}
             filter={isLeader ? 'url(#nodeShadow)' : undefined}
           />
 
+          {/* Health score display */}
+          <text
+            x={pos.x}
+            y={pos.y - 8}
+            textAnchor="middle"
+            className="text-xs font-bold select-none pointer-events-none"
+            fill={color}
+            fontSize="10"
+          >
+            {node.healthScore.toFixed(0)}
+          </text>
+
+          {/* Node ID */}
+          <text
+            x={pos.x}
+            y={pos.y + 6}
+            textAnchor="middle"
+            className="text-xs font-bold select-none pointer-events-none"
+            fill={color}
+            fontSize="11"
+          >
+            N{pos.id.split('-')[1]}
+          </text>
+
           {/* Status indicator dot */}
           <motion.circle
-            cx={pos.x + 18}
-            cy={pos.y - 18}
+            cx={pos.x + 20}
+            cy={pos.y - 20}
             r="5"
             fill={color}
             animate={
@@ -225,35 +293,24 @@ export const NetworkCanvasEnhanced: React.FC = () => {
             transition={{ duration: 1.5, repeat: Infinity }}
           />
 
-          {/* Node label */}
-          <text
-            x={pos.x}
-            y={pos.y}
-            textAnchor="middle"
-            dy="0.3em"
-            className="text-xs font-bold select-none pointer-events-none"
-            fill={color}
-          >
-            {pos.id.split('-')[1]}
-          </text>
-
           {/* Leader badge */}
           {isLeader && (
             <g>
               <circle
                 cx={pos.x}
-                cy={pos.y - 40}
-                r="12"
+                cy={pos.y - 42}
+                r="10"
                 fill="#06b6d4"
-                opacity="0.2"
+                opacity="0.3"
               />
               <text
                 x={pos.x}
-                y={pos.y - 36}
+                y={pos.y - 38}
                 textAnchor="middle"
                 dy="0.3em"
                 className="text-xs font-bold select-none pointer-events-none"
                 fill="#06b6d4"
+                fontSize="12"
               >
                 ★
               </text>
@@ -279,10 +336,10 @@ export const NetworkCanvasEnhanced: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 relative p-4">
-      {/* Background grid pattern */}
+    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 relative p-0">
+      {/* Background pattern */}
       <svg
-        className="absolute inset-0 w-full h-full opacity-10 pointer-events-none"
+        className="absolute inset-0 w-full h-full opacity-5 pointer-events-none"
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
       >
@@ -304,8 +361,11 @@ export const NetworkCanvasEnhanced: React.FC = () => {
         ref={svgRef}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        className="relative z-10 drop-shadow-lg"
+        className="relative z-10"
         viewBox={`0 0 ${CANVAS_WIDTH} ${CANVAS_HEIGHT}`}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
       >
         <defs>
           <filter id="nodeShadow" x="-50%" y="-50%" width="200%" height="200%">
@@ -347,23 +407,30 @@ export const NetworkCanvasEnhanced: React.FC = () => {
             <motion.div
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 2, repeat: Infinity }}
-              className="text-lg text-gray-500 font-semibold"
+              className="text-sm text-slate-500 font-semibold tracking-wide"
             >
-              Start simulation to visualize the network
+              START SIMULATION TO BEGIN
             </motion.div>
           </div>
         </div>
       )}
 
       {/* Stats overlay */}
-      <div className="absolute top-6 left-6 text-xs space-y-2 z-20">
-        <div className="bg-slate-900/70 backdrop-blur px-3 py-2 rounded border border-slate-700">
-          <div className="text-gray-400">Nodes: <span className="text-white font-semibold">{nodes.length}</span></div>
+      <div className="absolute top-4 left-4 text-xs space-y-2 z-20">
+        <div className="bg-slate-900/80 backdrop-blur px-3 py-1.5 rounded border border-slate-700/50">
+          <div className="text-slate-400">NODES: <span className="text-white font-semibold">{nodes.length}</span></div>
         </div>
-        <div className="bg-slate-900/70 backdrop-blur px-3 py-2 rounded border border-slate-700">
-          <div className="text-gray-400">Leader: <span className="text-cyan-400 font-semibold">{leader || 'None'}</span></div>
+        <div className="bg-slate-900/80 backdrop-blur px-3 py-1.5 rounded border border-slate-700/50">
+          <div className="text-slate-400">LEADER: <span className="text-cyan-400 font-semibold">{leader ? leader.split('-')[1] : '–'}</span></div>
         </div>
       </div>
+
+      {/* Hint */}
+      {nodes.length > 0 && (
+        <div className="absolute bottom-4 left-4 text-xs text-slate-500 tracking-wider">
+          DRAG NODES TO REPOSITION
+        </div>
+      )}
     </div>
   );
 };

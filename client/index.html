@@ -5,6 +5,30 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Smart Leader Election Simulator</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS with custom font -->
+    <style>
+      :root {
+        --font-sans: 'Space Mono', monospace;
+        --color-primary: #0f172a;
+        --color-secondary: #1e293b;
+        --color-accent: #06b6d4;
+        --color-success: #10b981;
+        --color-warning: #f59e0b;
+        --color-danger: #ef4444;
+      }
+      
+      html {
+        font-family: var(--font-sans);
+      }
+      
+      * {
+        font-family: var(--font-sans);
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
