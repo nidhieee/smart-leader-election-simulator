@@ -20,6 +20,7 @@ let isRunning = false;
 let isPaused = false;
 const eventLog: string[] = [];
 let clients: Set<WebSocket> = new Set();
+let broadcastInterval: NodeJS.Timeout | null = null;
 
 // Initialize cluster with some nodes
 function initializeCluster(): void {
@@ -54,11 +55,34 @@ function broadcastUpdate(): void {
     log: eventLog[eventLog.length - 1] || '',
   };
 
+  const message = JSON.stringify(update);
   clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(JSON.stringify(update));
+      try {
+        client.send(message);
+      } catch (error) {
+        console.error('Error sending message:', error);
+        clients.delete(client);
+      }
     }
   });
+}
+
+function startBroadcastLoop(): void {
+  if (broadcastInterval) clearInterval(broadcastInterval);
+  
+  broadcastInterval = setInterval(() => {
+    if (isRunning && !isPaused) {
+      broadcastUpdate();
+    }
+  }, 1000); // Broadcast every 1 second
+}
+
+function stopBroadcastLoop(): void {
+  if (broadcastInterval) {
+    clearInterval(broadcastInterval);
+    broadcastInterval = null;
+  }
 }
 
 // WebSocket handlers
@@ -66,14 +90,19 @@ wss.on('connection', (ws: WebSocket) => {
   clients.add(ws);
   console.log('Client connected. Total clients:', clients.size);
 
-  // Send initial state
+  // Send initial state immediately
   const update: ClusterUpdate = {
     nodes: clusterManager.getNodeStates(),
     leader: clusterManager.getLeader(),
     election: false,
     log: '',
   };
-  ws.send(JSON.stringify(update));
+  
+  try {
+    ws.send(JSON.stringify(update));
+  } catch (error) {
+    console.error('Error sending initial state:', error);
+  }
 
   ws.on('message', (message: string) => {
     try {
@@ -91,7 +120,17 @@ wss.on('connection', (ws: WebSocket) => {
 
   ws.on('error', (error) => {
     console.error('WebSocket error:', error);
+    clients.delete(ws);
   });
+
+  // Send ping to keep connection alive
+  const pingInterval = setInterval(() => {
+    if (ws.readyState === WebSocket.OPEN) {
+      ws.ping();
+    } else {
+      clearInterval(pingInterval);
+    }
+  }, 30000);
 });
 
 function handleCommand(data: any, ws: WebSocket): void {
@@ -106,8 +145,8 @@ function handleCommand(data: any, ws: WebSocket): void {
         heartbeatService.startLoop();
         heartbeatService.setElectionCallback(() => {
           addLog(`[ELECTION] New leader elected: ${clusterManager.getLeader()}`);
-          broadcastUpdate();
         });
+        startBroadcastLoop();
         addLog('[SIM] Simulation started');
         broadcastUpdate();
       }
@@ -135,6 +174,7 @@ function handleCommand(data: any, ws: WebSocket): void {
       isRunning = false;
       isPaused = false;
       heartbeatService.stopLoop();
+      stopBroadcastLoop();
       clusterManager.clear();
       eventLog.length = 0;
       addLog('[SIM] Simulation reset');
@@ -147,7 +187,6 @@ function handleCommand(data: any, ws: WebSocket): void {
         clusterManager.addNode(nodeId);
         addLog(`[NODE] Added node: ${nodeId}`);
 
-        // Re-run election if needed
         if (!clusterManager.getLeader()) {
           electionService.selectLeader();
           addLog(`[ELECTION] New leader elected: ${clusterManager.getLeader()}`);
@@ -162,7 +201,6 @@ function handleCommand(data: any, ws: WebSocket): void {
         clusterManager.removeNode(nodeId);
         addLog(`[NODE] Removed node: ${nodeId}`);
 
-        // Re-run election if leader was removed
         if (!clusterManager.getLeader()) {
           electionService.selectLeader();
           addLog(`[ELECTION] New leader elected: ${clusterManager.getLeader()}`);
@@ -177,7 +215,6 @@ function handleCommand(data: any, ws: WebSocket): void {
         clusterManager.crashNode(nodeId);
         addLog(`[FAILURE] Node crashed: ${nodeId}`);
 
-        // Check if leader crashed
         if (nodeId === clusterManager.getLeader()) {
           addLog('[ELECTION] Leader crashed, starting new election');
           electionService.selectLeader();
@@ -193,7 +230,6 @@ function handleCommand(data: any, ws: WebSocket): void {
         clusterManager.overloadNode(nodeId);
         addLog(`[DEGRADATION] Node overloaded: ${nodeId}`);
 
-        // Check if leader became degraded
         if (nodeId === clusterManager.getLeader()) {
           const leader = clusterManager.getNode(nodeId);
           if (leader && leader.getHealthScore() < 20) {
@@ -238,13 +274,14 @@ app.get('/api/cluster', (_req: Request, res: Response) => {
 // Start server
 const PORT = 3001;
 httpServer.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`WebSocket server ready on ws://localhost:${PORT}`);
+  console.log(`✓ Server running on http://localhost:${PORT}`);
+  console.log(`✓ WebSocket server ready on ws://localhost:${PORT}`);
 });
 
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('Shutting down...');
+  stopBroadcastLoop();
   heartbeatService.stopLoop();
   httpServer.close();
   process.exit(0);

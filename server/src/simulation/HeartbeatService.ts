@@ -2,11 +2,20 @@ import { ClusterManager } from './ClusterManager';
 import { ElectionService } from './ElectionService';
 import { HEARTBEAT_INTERVAL, HEARTBEAT_GRACE_PERIOD } from './types';
 
+export type HeartbeatEventCallback = (event: {
+  type: 'heartbeat' | 'election' | 'election_result';
+  leaderId?: string;
+  reason?: string;
+  timestamp: number;
+}) => void;
+
 export class HeartbeatService {
   protected clusterManager: ClusterManager;
   protected electionService: ElectionService;
   protected intervalId: NodeJS.Timeout | null;
   protected onElection: (() => void) | null;
+  protected onEvent: HeartbeatEventCallback | null;
+  protected lastHeartbeatTime: number = 0;
 
   constructor(
     clusterManager: ClusterManager,
@@ -16,10 +25,15 @@ export class HeartbeatService {
     this.electionService = electionService;
     this.intervalId = null;
     this.onElection = null;
+    this.onEvent = null;
   }
 
   setElectionCallback(callback: () => void): void {
     this.onElection = callback;
+  }
+
+  setEventCallback(callback: HeartbeatEventCallback): void {
+    this.onEvent = callback;
   }
 
   startLoop(): void {
@@ -43,6 +57,15 @@ export class HeartbeatService {
     const now = Date.now();
     const leaderId = this.clusterManager.getLeader();
 
+    // Send heartbeat signal (simulated)
+    if (leaderId && this.onEvent) {
+      this.onEvent({
+        type: 'heartbeat',
+        leaderId,
+        timestamp: now,
+      });
+    }
+
     // Check if leader is still alive
     if (leaderId) {
       const leader = this.clusterManager.getNode(leaderId);
@@ -53,7 +76,15 @@ export class HeartbeatService {
         now - leader.getState().lastHeartbeat > HEARTBEAT_GRACE_PERIOD ||
         leader.getHealthScore() < 20
       ) {
-        this.triggerElection('Leader failed or degraded');
+        const reason = !leader
+          ? 'Leader not found'
+          : !leader.isAlive()
+            ? 'Leader is dead'
+            : leader.getHealthScore() < 20
+              ? 'Leader is degraded'
+              : 'Heartbeat timeout';
+
+        this.triggerElection(reason);
         return;
       }
     } else {
@@ -67,6 +98,16 @@ export class HeartbeatService {
 
   triggerElection(reason: string): void {
     const newLeaderId = this.electionService.selectLeader();
+
+    if (this.onEvent) {
+      this.onEvent({
+        type: 'election_result',
+        leaderId: newLeaderId || undefined,
+        reason,
+        timestamp: Date.now(),
+      });
+    }
+
     if (this.onElection) {
       this.onElection();
     }

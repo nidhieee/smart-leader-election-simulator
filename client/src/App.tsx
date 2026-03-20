@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { useSimulation } from './hooks/useSimulation';
 import { ClusterView } from './components/ClusterView';
@@ -7,15 +7,7 @@ import { LogPanel } from './components/LogPanel';
 import { NodeDetails } from './components/NodeDetails';
 
 function App() {
-  const { connect, disconnect, isConnected } = useSimulation();
-
-  useEffect(() => {
-    connect();
-
-    return () => {
-      disconnect();
-    };
-  }, [connect, disconnect]);
+  const { isConnected } = useSimulation();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
@@ -37,11 +29,14 @@ function App() {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <div
+              <motion.div
+                animate={{ 
+                  opacity: isConnected ? 1 : 0.5,
+                }}
                 className={`w-3 h-3 rounded-full ${
-                  isConnected ? 'bg-green-500' : 'bg-red-500'
-                } animate-pulse`}
-              ></div>
+                  isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+                }`}
+              ></motion.div>
               <span className="text-sm">
                 {isConnected ? 'Connected' : 'Disconnected'}
               </span>
