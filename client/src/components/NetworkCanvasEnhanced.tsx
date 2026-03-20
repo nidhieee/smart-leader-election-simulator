@@ -163,19 +163,43 @@ export const NetworkCanvasEnhanced: React.FC = () => {
 
       if (event.type === 'HEARTBEAT') {
         return (
-          <motion.g key={`heartbeat-${idx}`}>
+          <motion.g key={`heartbeat-${idx}-${event.timestamp}`}>
+            {/* Multiple ripple waves */}
+            {[0, 0.33, 0.66].map((delay) => (
+              <motion.circle
+                key={`ripple-${delay}`}
+                cx={nodePos.x}
+                cy={nodePos.y}
+                r="0"
+                fill="none"
+                stroke="#10b981"
+                strokeWidth="2"
+                animate={{
+                  r: [0, 50],
+                  opacity: [1, 0],
+                }}
+                transition={{
+                  duration: 1.2,
+                  ease: 'easeOut',
+                  delay: delay * 0.3,
+                }}
+              />
+            ))}
+            
+            {/* Center pulse */}
             <motion.circle
               cx={nodePos.x}
               cy={nodePos.y}
-              r="0"
-              fill="none"
-              stroke="#10b981"
-              strokeWidth="2"
+              r="4"
+              fill="#10b981"
               animate={{
-                r: [0, 40],
-                opacity: [1, 0],
+                r: [4, 8, 4],
+                opacity: [1, 0.5, 1],
               }}
-              transition={{ duration: 1, ease: 'easeOut' }}
+              transition={{
+                duration: 0.6,
+                repeat: Infinity,
+              }}
             />
           </motion.g>
         );
@@ -183,7 +207,7 @@ export const NetworkCanvasEnhanced: React.FC = () => {
 
       if (event.type === 'COORDINATOR') {
         return (
-          <motion.g key={`coordinator-${idx}`}>
+          <motion.g key={`coordinator-${idx}-${event.timestamp}`}>
             <motion.path
               d={`M ${nodePos.x - 20} ${nodePos.y} L ${nodePos.x + 20} ${nodePos.y} M ${nodePos.x} ${nodePos.y - 20} L ${nodePos.x} ${nodePos.y + 20}`}
               stroke="#06b6d4"
@@ -434,3 +458,5 @@ export const NetworkCanvasEnhanced: React.FC = () => {
     </div>
   );
 };
+
+export default NetworkCanvasEnhanced;

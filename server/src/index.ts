@@ -22,11 +22,13 @@ const eventLog: string[] = [];
 let clients: Set<WebSocket> = new Set();
 let broadcastInterval: NodeJS.Timeout | null = null;
 let electionInProgress = false;
+let lastSentLogIndex = -1; // Track which log was last sent
 
 // Initialize cluster with some nodes
 function initializeCluster(): void {
   clusterManager.clear();
   eventLog.length = 0;
+  lastSentLogIndex = -1;
   electionInProgress = false;
 
   for (let i = 0; i < 5; i++) {
@@ -84,11 +86,17 @@ function broadcastAnimationEvent(event: AnimationEvent): void {
 }
 
 function broadcastUpdate(): void {
+  const latestLogIndex = eventLog.length - 1;
+  const latestLog = eventLog[latestLogIndex] || '';
+
+  // Only include log if it's new (different from last sent)
+  const logToSend = latestLogIndex > lastSentLogIndex ? latestLog : '';
+
   const update: ClusterUpdate = {
     nodes: clusterManager.getNodeStates(),
     leader: clusterManager.getLeader(),
     election: electionInProgress,
-    log: eventLog[eventLog.length - 1] || '',
+    log: logToSend,
   };
 
   const message = JSON.stringify({
@@ -106,6 +114,11 @@ function broadcastUpdate(): void {
       }
     }
   });
+
+  // Update last sent log index
+  if (logToSend) {
+    lastSentLogIndex = latestLogIndex;
+  }
 }
 
 function startBroadcastLoop(): void {
@@ -270,6 +283,7 @@ function handleCommand(data: any, ws: WebSocket): void {
       isRunning = false;
       isPaused = false;
       electionInProgress = false;
+      lastSentLogIndex = -1;
       heartbeatService.stopLoop();
       stopBroadcastLoop();
       clusterManager.clear();

@@ -58,15 +58,41 @@ export const SimulationProvider: React.FC<SimulationProviderProps> = ({
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isConnectingRef = useRef(false);
   const connectionAttempts = useRef(0);
+  const lastLogRef = useRef<string>('');
+  const lastLogTimeRef = useRef<number>(0);
   const MAX_RECONNECT_ATTEMPTS = 10;
   const RECONNECT_DELAY = 2000;
+  const LOG_DEDUPE_WINDOW = 1000; // 1 second window for duplicate prevention
+
+  // Check if log should be added (deduplication logic)
+  const shouldAddLog = (newLog: string): boolean => {
+    const now = Date.now();
+    const timeSinceLastLog = now - lastLogTimeRef.current;
+    
+    // If it's a heartbeat log and the exact same message was just logged, skip it
+    if (newLog.includes('[HEARTBEAT]') && lastLogRef.current === newLog) {
+      return false;
+    }
+
+    // If it's identical to last log and within dedup window, skip
+    if (
+      lastLogRef.current === newLog &&
+      timeSinceLastLog < LOG_DEDUPE_WINDOW
+    ) {
+      return false;
+    }
+
+    return true;
+  };
 
   const updateCluster = useCallback((update: ClusterUpdate) => {
     setNodes(update.nodes);
     setLeader(update.leader);
 
-    if (update.log) {
+    if (update.log && shouldAddLog(update.log)) {
       setLogs((prev) => [...prev.slice(-99), update.log]);
+      lastLogRef.current = update.log;
+      lastLogTimeRef.current = Date.now();
     }
   }, []);
 
