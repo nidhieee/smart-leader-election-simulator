@@ -157,7 +157,6 @@ export const NetworkCanvasEnhanced: React.FC = () => {
   };
 
   const renderAnimationEvents = () => {
-    const heartbeatEvents = animationEvents.filter((e) => e.type === 'HEARTBEAT');
     
     return animationEvents.map((event, idx) => {
       const nodePos = nodePositions.find((p) => p.id === event.nodeId);

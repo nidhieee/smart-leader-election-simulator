@@ -1,13 +1,60 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useSimulation } from '../hooks/useSimulation';
 import { NodeStatus } from '../types';
 import { fadeInUp } from '../utils/animationVariants';
 
 export const NodeDetails: React.FC = () => {
-  const { nodes, selectedNode } = useSimulation();
+  const { nodes, selectedNode, sendCommand } = useSimulation();
+  
+  // State for manual controls
+  const [manualCPU, setManualCPU] = useState<string>('');
+  const [manualMemory, setManualMemory] = useState<string>('');
+  const [manualUptime, setManualUptime] = useState<string>('');
+  const [autoDegrade, setAutoDegrade] = useState<boolean>(false);
 
   const node = nodes.find((n) => n.id === selectedNode);
+
+  // Update manual control values only when selected node changes, not on every server update
+  useEffect(() => {
+    if (node) {
+      setManualCPU(node.cpu.toFixed(1));
+      setManualMemory(node.memory.toFixed(1));
+      setManualUptime(node.uptime.toFixed(1));
+      // Note: autoDegrade state would be better stored in context, defaulting to false
+      setAutoDegrade(false);
+    }
+  }, [selectedNode]);
+
+  const handleApplyChanges = () => {
+    if (!selectedNode) return;
+
+    const cpuValue = parseFloat(manualCPU);
+    const memoryValue = parseFloat(manualMemory);
+    const uptimeValue = parseFloat(manualUptime);
+
+    // Validate values
+    if (isNaN(cpuValue) || isNaN(memoryValue) || isNaN(uptimeValue)) {
+      alert('Please enter valid numbers');
+      return;
+    }
+
+    // Send commands to server
+    if (cpuValue !== node?.cpu) {
+      sendCommand('setNodeCPU', selectedNode, { value: cpuValue });
+    }
+    if (memoryValue !== node?.memory) {
+      sendCommand('setNodeMemory', selectedNode, { value: memoryValue });
+    }
+    if (uptimeValue !== node?.uptime) {
+      sendCommand('setNodeUptime', selectedNode, { value: uptimeValue });
+    }
+  };
+
+  const handleToggleAutoDegrade = () => {
+    if (!selectedNode) return;
+    sendCommand('toggleAutoDegrade', selectedNode);
+  };
 
   if (!selectedNode || !node) {
     return (
@@ -179,6 +226,117 @@ export const NodeDetails: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Manual Control Section */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4 space-y-4"
+      >
+        <h4 className="text-sm font-bold text-blue-900 uppercase tracking-wider">Manual Control</h4>
+
+        {/* CPU Control */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <label className="text-xs font-semibold text-gray-700">CPU Load</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={manualCPU}
+              onChange={(e) => setManualCPU(e.target.value)}
+              className="w-16 px-2 py-1 border border-gray-300 rounded text-xs text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-xs text-gray-600">%</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="0.1"
+            value={manualCPU}
+            onChange={(e) => setManualCPU(e.target.value)}
+            className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          />
+        </div>
+
+        {/* Memory Control */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <label className="text-xs font-semibold text-gray-700">Memory Usage</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={manualMemory}
+              onChange={(e) => setManualMemory(e.target.value)}
+              className="w-16 px-2 py-1 border border-gray-300 rounded text-xs text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-xs text-gray-600">%</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="0.1"
+            value={manualMemory}
+            onChange={(e) => setManualMemory(e.target.value)}
+            className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          />
+        </div>
+
+        {/* Uptime Control */}
+        <div>
+          <div className="flex justify-between items-center mb-2">
+            <label className="text-xs font-semibold text-gray-700">Uptime</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={manualUptime}
+              onChange={(e) => setManualUptime(e.target.value)}
+              className="w-16 px-2 py-1 border border-gray-300 rounded text-xs text-right focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <span className="text-xs text-gray-600">%</span>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="0.1"
+            value={manualUptime}
+            onChange={(e) => setManualUptime(e.target.value)}
+            className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-blue-600"
+          />
+        </div>
+
+        {/* Auto-Degradation Toggle */}
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={handleToggleAutoDegrade}
+          className={`w-full py-3 px-4 rounded font-bold text-sm transition-all border-2 ${
+            autoDegrade
+              ? 'bg-orange-500 text-white border-orange-600 shadow-lg'
+              : 'bg-gray-200 text-gray-800 border-gray-400'
+          }`}
+        >
+          <span className="text-xs uppercase tracking-wider">Auto-Degradation: </span>
+          <span className="text-sm font-bold">{autoDegrade ? '🔴 ON' : '⭕ OFF'}</span>
+        </motion.button>
+
+        {/* Apply Button */}
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleApplyChanges}
+          className="w-full bg-blue-600 text-white py-2 px-4 rounded font-semibold text-sm hover:bg-blue-700 transition-colors border border-blue-700"
+        >
+          Apply Changes
+        </motion.button>
+      </motion.div>
 
       {/* Last Heartbeat */}
       <div className="bg-gray-50 p-2.5 rounded border border-gray-200 text-xs">

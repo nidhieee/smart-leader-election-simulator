@@ -13,6 +13,7 @@ export interface NodeState {
   memory: number;
   isLeader: boolean;
   lastHeartbeat: number;
+  autoDegrade?: boolean;  // ← NEW: Indicate if auto-degradation is enabled
 }
 
 export interface ElectionMessage {
@@ -26,7 +27,8 @@ export interface ClusterUpdate {
   nodes: NodeState[];
   leader: string | null;
   election: boolean;
-  log: string;
+  log?: string;
+  logs?: string[];
 }
 
 export const HEALTH_WEIGHTS = {

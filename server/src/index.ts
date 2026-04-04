@@ -294,7 +294,30 @@ function handleCommand(data: any, ws: WebSocket): void {
       clusterManager.clear();
       eventLog.length = 0;
       addLog('[SIM] Simulation reset');
-      broadcastUpdate();
+      
+      // Send reset update with all logs cleared
+      const resetUpdate: ClusterUpdate = {
+        nodes: clusterManager.getNodeStates(),
+        leader: clusterManager.getLeader(),
+        logs: eventLog,
+        election: false,
+      };
+
+      const resetMessage = JSON.stringify({
+        type: 'cluster-update',
+        data: resetUpdate,
+      });
+
+      clients.forEach((client) => {
+        if (client.readyState === WebSocket.OPEN) {
+          try {
+            client.send(resetMessage);
+          } catch (error) {
+            console.error('Error sending reset update:', error);
+            clients.delete(client);
+          }
+        }
+      });
       break;
 
     case 'addNode':
@@ -419,6 +442,51 @@ function handleCommand(data: any, ws: WebSocket): void {
         clusterManager.recoverNode(nodeId);
         addLog(`[RECOVERY] Node recovered: ${nodeId}`);
         broadcastUpdate();
+      }
+      break;
+
+    case 'setNodeCPU':
+      if (isRunning && nodeId && typeof data.value === 'number') {
+        const node = clusterManager.getNode(nodeId);
+        if (node) {
+          node.setCPU(data.value);
+          addLog(`[CONTROL] Set CPU for ${nodeId} to ${data.value.toFixed(1)}%`);
+          broadcastUpdate();
+        }
+      }
+      break;
+
+    case 'setNodeMemory':
+      if (isRunning && nodeId && typeof data.value === 'number') {
+        const node = clusterManager.getNode(nodeId);
+        if (node) {
+          node.setMemory(data.value);
+          addLog(`[CONTROL] Set Memory for ${nodeId} to ${data.value.toFixed(1)}%`);
+          broadcastUpdate();
+        }
+      }
+      break;
+
+    case 'setNodeUptime':
+      if (isRunning && nodeId && typeof data.value === 'number') {
+        const node = clusterManager.getNode(nodeId);
+        if (node) {
+          node.setUptime(data.value);
+          addLog(`[CONTROL] Set Uptime for ${nodeId} to ${data.value.toFixed(1)}%`);
+          broadcastUpdate();
+        }
+      }
+      break;
+
+    case 'toggleAutoDegrade':
+      if (isRunning && nodeId) {
+        const node = clusterManager.getNode(nodeId);
+        if (node) {
+          const currentState = node.getAutoDegrade();
+          node.setAutoDegrade(!currentState);
+          addLog(`[CONTROL] Auto-degradation for ${nodeId}: ${!currentState ? 'ENABLED' : 'DISABLED'}`);
+          broadcastUpdate();
+        }
       }
       break;
 

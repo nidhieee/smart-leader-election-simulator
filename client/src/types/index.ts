@@ -19,7 +19,8 @@ export interface ClusterUpdate {
   nodes: NodeState[];
   leader: string | null;
   election: boolean;
-  log: string;
+  log?: string;
+  logs?: string[];
 }
 
 export interface AnimationEvent {

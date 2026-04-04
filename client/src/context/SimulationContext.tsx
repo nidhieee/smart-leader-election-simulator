@@ -19,7 +19,7 @@ interface SimulationContextType {
   selectedNode: string | null;
   setSelectedNode: (nodeId: string | null) => void;
   updateCluster: (update: ClusterUpdate) => void;
-  sendCommand: (command: string, nodeId?: string) => void;
+  sendCommand: (command: string, nodeId?: string, data?: Record<string, any>) => void;
   isConnected: boolean;
   animationEvents: AnimationEvent[];
   clearAnimationEvent: (index: number) => void;
@@ -92,8 +92,15 @@ export const SimulationProvider: React.FC<SimulationProviderProps> = ({
     setLeader(update.leader);
     setElectionInProgress(update.election);
 
-    if (update.log && shouldAddLog(update.log)) {
-      setLogs((prev) => [...prev.slice(-99), update.log]);
+    // If logs array is provided (e.g., on reset), replace all logs
+    if (update.logs) {
+      setLogs(update.logs);
+      lastLogRef.current = update.logs[update.logs.length - 1] || '';
+      lastLogTimeRef.current = Date.now();
+    }
+    // Otherwise, append the single log if provided
+    else if (update.log && shouldAddLog(update.log)) {
+      setLogs((prev) => [...prev.slice(-99), update.log!]);
       lastLogRef.current = update.log;
       lastLogTimeRef.current = Date.now();
     }
@@ -104,14 +111,15 @@ export const SimulationProvider: React.FC<SimulationProviderProps> = ({
   }, []);
 
   const sendCommand = useCallback(
-    (command: string, nodeId?: string) => {
+    (command: string, nodeId?: string, data?: Record<string, any>) => {
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(
-          JSON.stringify({
-            command,
-            nodeId,
-          })
-        );
+        const message: Record<string, any> = {
+          command,
+        };
+        if (nodeId) message.nodeId = nodeId;
+        if (data) Object.assign(message, data);
+        
+        wsRef.current.send(JSON.stringify(message));
       } else {
         console.warn('WebSocket not connected. Command not sent:', command);
       }

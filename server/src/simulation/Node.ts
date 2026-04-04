@@ -10,6 +10,7 @@ export class Node {
   protected isLeader: boolean;
   protected lastHeartbeat: number;
   protected isCrashed: boolean;
+  protected autoDegrade: boolean;  // ← NEW: Control automatic degradation
 
   constructor(id: string) {
     this.id = id;
@@ -21,6 +22,7 @@ export class Node {
     this.isLeader = false;
     this.lastHeartbeat = Date.now();
     this.isCrashed = false;
+    this.autoDegrade = false;  // ← NEW: Disabled by default
   }
 
   calculateHealthScore(): number {
@@ -50,12 +52,15 @@ export class Node {
       return;
     }
 
-    // Simulate uptime degradation
-    this.uptime = Math.max(0, this.uptime - Math.random() * 2);
+    // Only apply automatic degradation if enabled
+    if (this.autoDegrade) {
+      // Simulate uptime degradation (only if auto-degrade is ON)
+      this.uptime = Math.max(0, this.uptime - Math.random() * 2);
 
-    // Simulate CPU and memory fluctuations
-    this.cpu = Math.max(0, Math.min(100, this.cpu + (Math.random() - 0.5) * 10));
-    this.memory = Math.max(0, Math.min(100, this.memory + (Math.random() - 0.5) * 8));
+      // Simulate CPU and memory fluctuations
+      this.cpu = Math.max(0, Math.min(100, this.cpu + (Math.random() - 0.5) * 10));
+      this.memory = Math.max(0, Math.min(100, this.memory + (Math.random() - 0.5) * 8));
+    }
 
     this.calculateHealthScore();
     this.lastHeartbeat = Date.now();
@@ -86,6 +91,30 @@ export class Node {
     this.isLeader = isLeader;
   }
 
+  // NEW: Manual control methods
+  setCPU(value: number): void {
+    this.cpu = Math.max(0, Math.min(100, value));
+    this.calculateHealthScore();
+  }
+
+  setMemory(value: number): void {
+    this.memory = Math.max(0, Math.min(100, value));
+    this.calculateHealthScore();
+  }
+
+  setUptime(value: number): void {
+    this.uptime = Math.max(0, Math.min(100, value));
+    this.calculateHealthScore();
+  }
+
+  setAutoDegrade(enabled: boolean): void {
+    this.autoDegrade = enabled;
+  }
+
+  getAutoDegrade(): boolean {
+    return this.autoDegrade;
+  }
+
   getState(): NodeState {
     return {
       id: this.id,
@@ -96,6 +125,7 @@ export class Node {
       memory: this.memory,
       isLeader: this.isLeader,
       lastHeartbeat: this.lastHeartbeat,
+      autoDegrade: this.autoDegrade,  // ← Include in state
     };
   }
 
